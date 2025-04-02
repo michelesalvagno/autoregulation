@@ -23,7 +23,7 @@ If you use this script for academic work or research, please cite our GitHub rep
 
 ---
 
-## Overview
+## overview
 
 The script:
 1. Loads time series data for PA and BFV.
@@ -35,7 +35,7 @@ The script:
 
 ---
 
-## How to Use
+## how to use
 
 1. Place your input file `filename.txt` in the working directory.
 2. Run the script.
@@ -47,7 +47,7 @@ The script:
 
 ---
 
-## Signal Preprocessing
+## signal preprocessing
 
 - **Sampling rate (`fs`)**: 100 Hz
 - Signals: 
@@ -62,7 +62,7 @@ Missing or outlier data is linearly interpolated.
 
 ---
 
-## Manual Artifact Removal
+## manual artifact removal
 
 You can interactively remove segments of noise from both BFV and PA:
 - Click to select start and end of noisy segments
@@ -70,13 +70,13 @@ You can interactively remove segments of noise from both BFV and PA:
 
 ---
 
-## Epoch Division
+## epoch division
 
 Signals are divided into **minute epochs** (if 3 minutes : ~18,000 samples) after cleaning. Only clean data segments (NaNs excluded) are used for analysis.
 
 ---
 
-## Moving Average and Correlation
+## moving average and correlation
 
 - Moving averages calculated using a pre-defined overlapping 10-second windows (1000 samples) (we also used 5-second windows) with 50% overlap (step of 500 samples - we also used 20% or 80% of overlap).
 - For each epoch:
