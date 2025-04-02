@@ -1,0 +1,521 @@
+clear all
+close all
+clc
+
+%%
+pz = readtable(['eva1_0.txt']);
+
+%CBF-AP
+a = [3 5];
+
+%COLUMNS t,BFV,AP
+X = pz(:,a);
+X = table2array(X);
+fs = 100;
+t = 1/fs:1/fs:size(X,1)/fs; 
+t = t/60;
+BFV = X(:,1);
+AP = X(:,2);
+
+%% OUTLIERS
+%
+th_min_AP = 10;
+th_max_AP = 300;
+
+index_outlier = find(AP>th_max_AP | AP<th_min_AP);
+AP_original = AP;
+AP(index_outlier) = NaN;
+AP_interpolated = fillmissing(AP,'linear');
+
+%
+th_min_BFV = 10;
+th_max_BFV = 300;
+
+index_outlier = find(BFV>th_max_BFV | BFV<th_min_BFV);
+BFV_original = BFV;
+BFV(index_outlier) = NaN;
+BFV_interpolated = fillmissing(BFV,'linear');
+
+
+%% PLOT 
+figure
+plot(AP_interpolated,'Linewidth',2)
+hold on
+
+AP = AP_interpolated;
+
+%% MOVMEAN for INITIAL AP AND BFV
+% 
+durata_s = 100; 
+windowLength = durata_s * fs;
+
+% movmean
+MovingAvgAP_Iniziale = movmean(AP_interpolated, windowLength, 'omitnan');
+MovingAvgBFV_Iniziale = movmean(BFV_interpolated, windowLength, 'omitnan');
+
+% graphics
+figure;
+plot(t, MovingAvgAP_Iniziale, 'LineWidth', 2)
+hold on; 
+plot(t, MovingAvgBFV_Iniziale, 'LineWidth', 2)
+title('Initial AP and BFV - MovMeans - 10 seconds windows');
+xlabel('Time (minutes)');
+ylabel('Values');
+legend({'MovMean AP', 'MovMean BFV'}, 'Location', 'best');
+xlim([min(t) max(t)]);
+ylim('auto'); 
+grid on;
+
+%%
+figure
+plot(BFV_interpolated,'Linewidth',2)
+hold on
+
+BFV = BFV_interpolated;
+
+%% PLOT BFV
+a = figure;
+plot(t,BFV);
+xlabel('Minutes')
+title('BFV CUT')
+xlim("auto")
+ylim("auto")
+
+%% CUT BFV
+%horizontal zoom: press f --> activate zoom in --> press another
+%letter (NOT F or E) --> select the points --> automatically zoom OUT -->
+%press E to finish and continue to the AP.
+
+% 
+x1_points = [];
+x2_points = [];
+cut_perc_bfv = 0;
+while true
+    waitforbuttonpress; 
+    key = get(gcf, 'CurrentCharacter'); 
+    disp('Press ''f'' to zoom in');
+    while key == 'f'
+        h = zoom(a);
+        h.Enable = 'on';
+        h.Motion = 'horizontal';
+        h.Direction = 'in';
+        waitforbuttonpress; 
+        key = get(gcf, 'CurrentCharacter');
+    end
+
+    [x1,y1] = ginput(1); 
+    hold on;
+    plot(x1,y1,'o','LineWidth',3); 
+    xline(x1,'--r','LineWidth',3); 
+
+    [x2,y2] = ginput(1);
+    hold on;
+    plot(x2,y2,'o','LineWidth',3);
+    xline(x2,'--r','LineWidth',3);
+
+    x1 = x1*60; 
+    x1 = x1*fs; 
+
+    x2 = x2*60;
+    x2 = x2*fs; 
+
+    if x2 >= length(BFV)
+        x2 = length(BFV);
+    end
+
+    x1_points = [x1_points, x1];
+    x2_points = [x2_points, x2];
+
+    zoom 'out'
+    disp('Press any key to continue or ''e'' to exit and apply exclusions.');
+    waitforbuttonpress; 
+    key = get(gcf, 'CurrentCharacter');
+
+    if key == 'e'
+        break;
+    end
+end
+
+%
+BFV1 = BFV;
+AP1 = AP;
+
+% loop :)
+for i = 1:length(x1_points)
+    if x1_points(i)<1
+        x1_points(i) = 1;
+    end
+    if x2_points(i)>length(BFV1)
+        x2_points(i) = length(BFV1);
+    end
+    BFV1(x1_points(i):x2_points(i)) = NaN;
+    AP1(x1_points(i):x2_points(i)) = NaN;
+
+    %CUT PERCENTAGE BFV
+    if x2_points(i) >= length(BFV)
+        x2_points(i) = length(BFV);
+    end
+    if x1_points(i) >= length(BFV)
+        x1_points(i) = length(BFV);
+    end
+
+
+    if x2_points(i) <= 0
+        x2_points(i) = 1;
+    end
+    if x1_points(i) <= 0
+        x1_points(i) = 1;
+    end
+
+
+    cut_perc_bfv = cut_perc_bfv + sum(x2_points(i)-x1_points(i))/length(BFV)*100;
+end
+
+%FIGURES BRUSHED
+figure
+plot(t,BFV1);
+title('Final BFV - after the first cut')
+xlabel('Minutes')
+
+figure
+plot(t,AP1);
+title('Final AP - after the first cut')
+xlabel('Minutes')
+
+
+%% PLOT AP (after BFV cutting)
+a = figure;
+plot(t, AP1);
+title('AP CUT')
+xlim("auto")
+ylim("auto")
+
+%% CUT AP (after BFV cutting)
+
+hold on;
+
+x1_points_AP = [];
+x2_points_AP = [];
+cut_perc_AP = 0;
+while true
+    waitforbuttonpress; 
+    key = get(gcf, 'CurrentCharacter'); 
+    disp('Press ''f'' to zoom in');
+    while key == 'f' 
+        h = zoom(a);
+        h.Enable = 'on';
+        h.Motion = 'horizontal';
+        h.Direction = 'in';
+        waitforbuttonpress;
+        key = get(gcf, 'CurrentCharacter');
+    end
+
+    [x1,y1] = ginput(1);
+    hold on;
+    plot(x1,y1,'o','LineWidth',3);
+    xline(x1,'--r','LineWidth',3);
+
+    [x2,y2] = ginput(1);
+    hold on;
+    plot(x2,y2,'o','LineWidth',3);
+    xline(x2,'--r','LineWidth',3);
+
+    x1 = x1*60;
+    x1 = x1*fs; 
+
+    x2 = x2*60;
+    x2 = x2*fs;
+
+    if x2>=length(AP1)
+        x2 = length(AP1);
+    end
+
+    x1_points_AP = [x1_points_AP, x1];
+    x2_points_AP = [x2_points_AP, x2];
+    zoom 'out'
+    disp('Press any key to continue or ''e'' to exit and apply exclusions.');
+    waitforbuttonpress; 
+    key = get(gcf, 'CurrentCharacter');
+
+    if key == 'e'
+        break;
+    end
+    
+end
+
+BFV2 = BFV1;
+AP2 = AP1;
+for i = 1:length(x1_points_AP)
+    if x1_points_AP(i)<1
+        x1_points_AP(i) = 1;
+    end
+    if x2_points_AP(i)>length(BFV2)
+        x2_points_AP(i) = length(BFV2);
+    end
+   
+    if x2_points_AP(i) >= length(AP)
+        x2_points_AP(i) = length(AP);
+    end
+    if x1_points_AP(i) >= length(AP)
+        x1_points_AP(i) = length(AP);
+    end
+
+
+    if x2_points_AP(i) <= 0
+        x2_points_AP(i) = 1;
+    end
+    if x1_points_AP(i) <= 0
+        x1_points_AP(i) = 1;
+    end
+
+    cut_perc_AP = cut_perc_AP + sum(x2_points_AP(i)-x1_points_AP(i))/length(AP)*100;
+    BFV2(x1_points_AP(i):x2_points_AP(i)) = NaN;
+    AP2(x1_points_AP(i):x2_points_AP(i)) = NaN;
+end
+
+
+%% FIGURES AFTER SECOND CUT
+figure;
+plot(t, BFV2);
+title('Final BFV - after the second cut');
+
+figure;
+plot(t, AP2);
+title('Final AP - after the second cut');
+
+%% CUT PERCENTAGE FOR AP
+if x2_points_AP >= length(AP)
+    x2_points_AP = 0;
+end
+if x1_points_AP >= length(AP)
+    x1_points_AP = 0;
+end
+cut_perc_AP = sum(x2_points_AP - x1_points_AP) / length(AP) * 100;
+
+%% EPOCHS
+AP3 = AP2;
+AP2(isnan(AP2)) = []; 
+figure
+plot(AP3)
+hold on 
+plot(AP2)
+
+BFV3 = BFV2;
+BFV2(isnan(BFV2)) = [];
+figure
+plot(BFV3)
+hold on 
+plot(BFV2)
+
+%EPOCHLENGH to be modified - 1
+epochLengthSamples = 3*60*fs;
+totalEpochs = floor(length(AP2) / epochLengthSamples);
+
+AP_Epochs = NaN(epochLengthSamples, totalEpochs);
+BFV_Epochs = NaN(epochLengthSamples, totalEpochs);
+
+for i = 1:totalEpochs
+    startIndex = (i-1) * epochLengthSamples + 1;
+    endIndex = startIndex + epochLengthSamples - 1;
+    AP_Epochs(:, i) = AP2(startIndex:endIndex);
+    BFV_Epochs(:, i) = BFV2(startIndex:endIndex);
+end
+
+figure;
+plot((1:length(AP2))/fs/60,  AP2);
+hold on;
+title('AP with Epochs');
+xlabel('Time (minutes)');
+ylabel('AP');
+grid on;
+for i = 1:totalEpochs
+    epochStartTime = (i-1) * (epochLengthSamples / fs) / 60;
+    xline(epochStartTime, '--r', 'LineWidth', 1.5);
+end
+
+figure;
+plot((1:length(BFV2))/fs/60, BFV2);
+hold on;
+title('BFV con Epoche');
+xlabel('Tempo (minuti)');
+ylabel('Velocità di Flusso Cerebrale');
+grid on;
+for i = 1:totalEpochs
+    epochStartTime = (i-1) * (epochLengthSamples / fs) / 60;
+    xline(epochStartTime, '--r', 'LineWidth', 1.5);
+end
+xline(length(BFV2)/fs/60, '--r', 'LineWidth', 1.5)
+
+
+%% MOVING WINDOW
+%EPOCHLENGH to be modified - 2
+epochLengthSamples = 3*60*fs;
+
+totalEpochs = floor(length(AP2) / epochLengthSamples);
+
+MovingAvgAP_Epochs = {};  
+MovingAvgBFV_Epochs = {};
+
+MovingAvgAP = [];
+MovingAvgBFV = [];
+
+for i = 1:totalEpochs
+    startIndex = (i-1) * epochLengthSamples + 1;
+    endIndex = startIndex + epochLengthSamples - 1;
+
+    currentAP_Epoch = AP2(startIndex:endIndex);
+    currentBFV_Epoch = BFV2(startIndex:endIndex);
+
+    currentAP_Epoch = currentAP_Epoch(~isnan(currentAP_Epoch));
+    currentBFV_Epoch = currentBFV_Epoch(~isnan(currentBFV_Epoch));
+
+%CHANGE MOVING WINDOW HERE 
+    % movmean AP
+    segcounter = 1;
+    segsum = 0;
+    segsample1 = 1;
+    segsample2 = 1000;
+
+%CHANGE OVERLAP HERE 
+    while segsample2 <= length(currentAP_Epoch)
+        MovingAvgAP(segcounter,1) = mean(currentAP_Epoch(segsample1:segsample2),'omitnan');
+        segcounter = segcounter + 1;
+        segsample1 = segsample1 + 800;
+        segsample2 = segsample2 + 800;
+    end
+
+%CHANGE MOVING WINDOW HERE (SAME then the previous WINDOW)
+    % movmean BFV
+    segcounter= 1;
+    segsum = 0;
+    segsample1 = 1;
+    segsample2 = 1000; 
+
+%CHANGE OVERLAP HERE (SAME then the previous OVERLAP)
+    while segsample2 <= length(currentBFV_Epoch)
+        MovingAvgBFV(segcounter,1) = mean(currentBFV_Epoch(segsample1:segsample2),'omitNaN');
+        segcounter = segcounter + 1;
+        segsample1 = segsample1 + 800;
+        segsample2 = segsample2 + 800;
+    end
+
+    % movmean Epoch
+    MovingAvgAP_Epochs{i} = MovingAvgAP;
+    MovingAvgBFV_Epochs{i} = MovingAvgBFV;
+    n_blocchi = length(MovingAvgAP);
+    MovingAvgAP =  [];
+    MovingAvgBFV =  [];
+end
+
+
+figure
+hold on
+numEpochs = length(MovingAvgAP_Epochs);
+MovingAvg_AP_tot = cell2mat(MovingAvgAP_Epochs');
+MovingAvg_BFV_tot = cell2mat(MovingAvgBFV_Epochs');
+epochs = 1:n_blocchi:numEpochs*n_blocchi;
+figure
+plot( MovingAvg_AP_tot)
+hold on
+plot(MovingAvg_BFV_tot)
+title('Medie Mobili di AP e BFV per Ogni Epoch');
+xlabel('Blocchi (overlap di X%)');
+ylabel('Valori mediati');
+
+xline(epochs, '--r', 'LineWidth', 1.5);
+legend({'AP', 'BFV','Epochs'}, 'Location', 'best');
+hold off;
+
+
+%% MEAN STANDARD DEVIATION
+% total number of Epochs
+numEpochs = size(AP_Epochs, 2); 
+
+% 
+STD_AP_Epochs = zeros(1, numEpochs);
+currentEpochData = [];
+for i = 1:numEpochs
+    %
+    currentEpochData = AP_Epochs(:, i);
+
+    %
+    currentEpochData = currentEpochData(~isnan(currentEpochData));
+
+    %
+    STD_AP_Epochs(i) = std(currentEpochData);
+end
+
+figure;
+plot(STD_AP_Epochs, '-o');
+title('Mean Standard Deviation - AP in each Epoch');
+xlabel('Epoch');
+ylabel('Mean Standard Deviation (AP)');
+grid on;
+
+
+%% MXA
+MXA_Epochs = zeros(1, numEpochs);
+MDN_AP_Epochs = zeros(1, numEpochs);
+MEAN_AP_Epochs = zeros(1, numEpochs);
+FINAL_LENGTH_AP_Epochs = zeros(1, numEpochs);
+
+for i = 1:numEpochs
+    if ~isempty(MovingAvgAP_Epochs{i}) && ~isempty(MovingAvgBFV_Epochs{i})
+        MXA_Epochs(i) = corr(MovingAvgAP_Epochs{i}, MovingAvgBFV_Epochs{i}, 'type', 'Pearson', 'Rows', 'complete');
+        MDN_AP_Epochs(i) = median(AP_Epochs(:,i), 'omitnan');
+        MEAN_AP_Epochs(i) = mean(AP_Epochs(:,i), 'omitnan');
+
+        length_cut_epoch = sum(~isnan(AP_Epochs(:,i)));
+        length_cut_epoch_s = length_cut_epoch/fs;
+        FINAL_LENGTH_AP_Epochs(i) = length_cut_epoch_s/60; 
+    else
+        MXA_Epochs(i) = NaN;
+        MDN_AP_Epochs(i) = NaN;
+        MEAN_AP_Epochs(i) = NaN;
+        FINAL_LENGTH_AP_Epochs(i) = NaN;
+    end
+end
+
+figure;
+plot(MXA_Epochs, 'o-');
+title('MXA for each Epoch');
+xlabel('Epoch');
+ylabel('MXA');
+grid on;
+
+
+
+%% OTHERS 
+
+%
+Systolic_Epochs = zeros(1, totalEpochs);
+Diastolic_Epochs = zeros(1, totalEpochs);
+MAP_Epochs = zeros(1, totalEpochs);
+
+    currentAP = AP_Epochs(:, i);
+    currentBFV = BFV_Epochs(:, i);
+    
+    %
+    Systolic_Epochs(i) = max(currentAP);
+    Diastolic_Epochs(i) = min(currentAP);
+    
+    %
+    MAP_Epochs(i) = (Systolic_Epochs(i) + 2 * Diastolic_Epochs(i)) / 3;
+ 
+
+%% 
+
+MXA_tot_final = mean(MXA_Epochs,'omitNaN')
+AP_mean_final = mean(AP2,'omitNan')
+BFV_mean_final = mean(BFV2,'omitNan')
+AP_std_final = mean(STD_AP_Epochs,'omitNaN')
+MAP_tot_final = mean(MAP_Epochs, 'omitNaN')
+
+
+%
+resultsname = {'BFV_mean_final', 'AP_std_final', 'AP_mean_final', ...
+          'MAP_tot_final', 'MXA_tot_final'};
+
+% 
+valuesname = [BFV_mean_final, AP_std_final, AP_mean_final, ...
+          MAP_tot_final, MXA_tot_final];
