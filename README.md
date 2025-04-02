@@ -1,4 +1,4 @@
-# autoregulation analysis using MxA
+# autoregulation analysis using MXa
 
 This repository contains a MATLAB script developed for the analysis of **dynamic cerebral autoregulation** using the **MxA (mean flow index)** method.
 
