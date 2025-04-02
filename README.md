@@ -4,31 +4,84 @@ This repository contains a MATLAB script developed for the analysis of **dynamic
 
 The script allows researchers and clinicians to compute MxA values from arterial blood pressure (ABP) and cerebral blood flow velocity (CBFV) signals, offering a simple and reproducible way to assess autoregulation at the bedside or in research settings.
 
-## overview
 
-Cerebral autoregulation is a critical physiological mechanism that maintains constant cerebral blood flow despite fluctuations in systemic arterial pressure. The MxA index quantifies this relationship by computing the moving Pearson correlation coefficient between slow waves of ABP and CBFV.
+## script origin
+
+This script is based on a previous version originally developed some years ago by our intensive care research group at **Erasme Hospital, Université Libre de Bruxelles (ULB), Belgium** under the supervision of prof. Fabio Silvio Taccone.
+The current version of the script has been updated for compatibility with MATLAB 2024 and improved for greater clarity, and ease of use.
+
+
+## requirements
+
+- MATLAB R2021b or later
+- Input file: `filename.txt` (must contain PA and BFV signals in columns)
+
+
+## citation
+
+If you use this script for academic work or research, please cite our GitHub repository and acknowledge _Department of Intensive Care - Erasme Hospital - ULB Bruxelles_.
+
+---
+
+## Overview
 
 The script:
-- Takes input time series of ABP and CBFV
-- Applies smoothing and resampling
-- Segments the signals into windows
-- Computes the Pearson correlation coefficient over each segment
-- Outputs the MxA value and optionally visualizes the process
+1. Loads time series data for PA and BFV.
+2. Cleans signal artifacts using thresholds and linear interpolation.
+3. Allows manual exclusion of noisy segments via interactive zoom and selection.
+4. Segments the signals into X-minute epochs (we usually use 3 or 5 minutes).
+5. Calculates moving averages and the MXA index (correlation between PA and BFV).
+6. Summarizes key results in a final table.
 
-## Script Origin
-
-This script is based on a previous version originally developed by our intensive care research group at **Erasme Hospital, Université Libre de Bruxelles (ULB), Belgium** under the supervision of prof. Fabio Silvio Taccone.
-The current version has been modified and updated to adapt the script to the new version of MatLAB 2024, and clarity, robustness, and ease of use.
-
-## Requirements
-
-- MATLAB R2024b or later 
+---
 
 ## How to Use
 
-## Citation
+1. Place your input file `filename.txt` in the working directory.
+2. Run the script.
+3. When prompted:
+   - Use `f` to zoom in horizontally on a plot.
+   - Select two points with your mouse to define a noisy segment.
+   - Use `e` to finish segment selection.
+4. The script will automatically perform interpolations, cuts, and epoch-based analysis.
 
-If you use this script for academic work or clinical research, please cite our GitHub repository and acknowledge _Department of Intensive Care - Erasme Hospital - ULB Bruxelles_.
+---
+
+## Signal Preprocessing
+
+- **Sampling rate (`fs`)**: 100 Hz
+- Signals: 
+  - **CBFV**: Column number to adjust if needed
+  - **PA**: Column number to adjust if needed
+
+Both signals are cleaned by excluding values outside defined thresholds:
+- PA: 10–300 mmHg
+- BFV: 10–300 cm/s
+
+Missing or outlier data is linearly interpolated.
+
+---
+
+## Manual Artifact Removal
+
+You can interactively remove segments of noise from both BFV and PA:
+- Click to select start and end of noisy segments
+- The script keeps track of percentage of signal removed
+
+---
+
+## Epoch Division
+
+Signals are divided into **minute epochs** (if 3 minutes : ~18,000 samples) after cleaning. Only clean data segments (NaNs excluded) are used for analysis.
+
+---
+
+## Moving Average and Correlation
+
+- Moving averages calculated using a pre-defined overlapping 10-second windows (1000 samples) (we also used 5-second windows) with 50% overlap (step of 500 samples - we also used 20% or 80% of overlap).
+- For each epoch:
+  - Moving average is computed separately for PA and BFV
+  - **MXA** (Pearson correlation between averaged PA and BFV) is computed
 
 ---
 
