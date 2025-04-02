@@ -15,6 +15,7 @@ The current version of the script has been updated for compatibility with MATLAB
 
 - MATLAB R2021b or later
 - Input file: `filename.txt` (must contain PA and BFV signals in columns)
+- corr requires one of the following: Econometrics Toolbox, Statistics and Machine Learning Toolbox
 
 
 ## citation
